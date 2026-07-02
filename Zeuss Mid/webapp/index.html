@@ -405,8 +405,8 @@ checkBtn.addEventListener('click', async () => {
     const data = await res.json();
     if (res.ok && data.ok) {
       statusEl.textContent = data.expires_at
-        ? `Ключ активен до ${new Date(data.expires_at * 1000).toLocaleDateString('ru-RU')}.`
-        : 'Ключ активен бессрочно.';
+        ? `Online — активен до ${new Date(data.expires_at * 1000).toLocaleDateString('ru-RU')}.`
+        : 'Online — активен бессрочно.';
       statusEl.classList.add('ok');
       localStorage.setItem('zaetheron_key', key);
       if (data.download_url) {
@@ -429,11 +429,11 @@ checkBtn.addEventListener('click', async () => {
 
 function reasonToText(reason) {
   switch (reason) {
-    case 'not_found': return 'Такой ключ не найден.';
-    case 'revoked': return 'Ключ отозван.';
-    case 'expired': return 'Срок действия ключа истёк.';
+    case 'not_found': return 'Отозван / истёк.';
+    case 'revoked': return 'Отозван / истёк.';
+    case 'expired': return 'Отозван / истёк.';
     case 'db_temporarily_unavailable': return 'Сервер временно недоступен, попробуйте ещё раз через пару секунд.';
-    default: return 'Ключ недействителен.';
+    default: return 'Отозван / истёк.';
   }
 }
 
@@ -494,7 +494,7 @@ async function refreshProfile() {
     });
     const data = await res.json();
     if (res.ok && data.ok) {
-      document.getElementById('lStatus').innerHTML = '<span class="badge-ok">активен</span>';
+      document.getElementById('lStatus').innerHTML = '<span class="badge-ok">online</span>';
       document.getElementById('lExpires').textContent = data.expires_at
         ? new Date(data.expires_at * 1000).toLocaleDateString('ru-RU')
         : 'бессрочно';
