@@ -278,9 +278,7 @@
         <div class="row"><span>Статус</span><span id="lStatus">—</span></div>
         <div class="row"><span>Действует до</span><span id="lExpires" class="mono">—</span></div>
         <div class="row"><span>Устройство</span><span id="lHwid">—</span></div>
-        <div class="row"><span>Сбросов HWID осталось</span><span id="lResets" class="mono">—</span></div>
         <a id="profileDownloadLink" class="download-btn" style="display:none" href="#">Скачать клиент</a>
-        <button id="resetHwidBtn" class="check-btn danger-btn">Сбросить привязку устройства</button>
         <button id="forgetKeyBtn" class="link-btn">Убрать ключ из профиля</button>
         <div id="profileStatus" class="status"></div>
       </div>
@@ -497,37 +495,6 @@ async function refreshProfile() {
 document.getElementById('forgetKeyBtn').addEventListener('click', () => {
   localStorage.removeItem('zaetheron_key');
   refreshProfile();
-});
-
-document.getElementById('resetHwidBtn').addEventListener('click', async () => {
-  const savedKey = localStorage.getItem('zaetheron_key');
-  if (!savedKey) return;
-  const btn = document.getElementById('resetHwidBtn');
-  const pStatus = document.getElementById('profileStatus');
-  btn.disabled = true;
-  btn.textContent = 'Сбрасываем…';
-  try {
-    const res = await fetch(`${API_BASE}/reset_hwid`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: savedKey })
-    });
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      pStatus.textContent = 'Привязка сброшена. Осталось сбросов: ' + data.resets_left;
-      pStatus.classList.add('ok');
-      refreshProfile();
-    } else {
-      pStatus.textContent = data.detail || 'Не удалось сбросить привязку.';
-      pStatus.classList.add('err');
-    }
-  } catch (e) {
-    pStatus.textContent = 'Не удалось связаться с сервером.';
-    pStatus.classList.add('err');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Сбросить привязку устройства';
-  }
 });
 
 /* ---------- падающие звёзды ---------- */
