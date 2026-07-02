@@ -541,6 +541,9 @@ async function refreshProfile() {
     }
   } catch (e) {
     document.getElementById('lStatus').innerHTML = '<span class="badge-err">нет связи с сервером</span>';
+    document.getElementById('lExpires').textContent = '—';
+    document.getElementById('lHwid').textContent = '—';
+    document.getElementById('lResets').textContent = '—';
   }
 }
 
