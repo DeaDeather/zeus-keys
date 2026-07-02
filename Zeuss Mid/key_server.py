@@ -17,12 +17,19 @@ import psycopg2
 import psycopg2.extras
 from contextlib import closing
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 DATABASE_URL  = os.environ["DATABASE_URL"]  # Railway подставляет автоматически
 ADMIN_TOKEN   = os.environ.get("ZEUS_ADMIN_TOKEN", "change-me-now")
 
 app = FastAPI(title="Zeus Midnight License Server")
+
+
+@app.get("/app")
+def webapp():
+    """Отдаёт Telegram Mini App (webapp/index.html)."""
+    return FileResponse("webapp/index.html")
 
 
 def db():
