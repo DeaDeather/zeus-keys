@@ -21,11 +21,11 @@ Zaetheron Industry — Telegram-бот.
                                     бот сам напишет покупателю, что ключ создан,
                                     и покупатель сможет смотреть его через /mykey.
     /delkey КЛЮЧ                 — отозвать (деактивировать) ключ
+    /resethwid КЛЮЧ               — сбросить привязку устройства к ключу
     /reply TELEGRAM_ID текст      — ответить пользователю на тикет поддержки от имени бота
 
 Команды для всех пользователей:
     /mykey                        — показать свой ключ, статус, срок действия
-    /resethwid                    — сбросить привязку устройства к своему ключу
     /support ТЕКСТ                — отправить обращение в поддержку (видно только админу)
 """
 import asyncio
@@ -82,7 +82,6 @@ async def start(message: Message):
         "Тарифы, статус ключа и скачивание клиента — в мини-приложении ниже.\n\n"
         "Команды:\n"
         "/mykey — посмотреть свой ключ и его статус\n"
-        "/resethwid — сбросить привязку устройства к своему ключу\n"
         "/support ТЕКСТ — написать в поддержку",
         reply_markup=webapp_keyboard(),
     )
@@ -252,55 +251,45 @@ async def my_key(message: Message):
         f"Действует до: {expires_text}\n"
         f"Устройство: {hwid_text}\n"
         f"Осталось сбросов привязки: {row['resets_left']}\n\n"
-        f"Сбросить привязку устройства — /resethwid"
+        f"Для сброса привязки устройства обратитесь в поддержку — /support"
     )
 
 
 @dp.message(Command("resethwid"))
 async def reset_hwid_cmd(message: Message):
-    """Пользователь сам сбрасывает привязку устройства к своему ключу."""
-    if not DATABASE_URL:
-        await message.answer("Сервис временно недоступен, попробуйте позже.")
+    """Сброс привязки устройства к ключу — доступно только админу."""
+    if not is_admin(message):
         return
 
-    user_id = message.from_user.id
+    if not DATABASE_URL:
+        await message.answer("DATABASE_URL не настроена на этом сервисе.")
+        return
+
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Формат: /resethwid КЛЮЧ")
+        return
+
+    key = parts[1].strip().upper()
 
     try:
         with closing(db()) as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM keys WHERE telegram_id = %s ORDER BY created_at DESC LIMIT 1",
-                    (user_id,),
-                )
-                row = cur.fetchone()
-                if row is None:
-                    await message.answer("У вас нет привязанного ключа.")
-                    return
-                if not row["active"]:
-                    await message.answer("Ключ отозван, сброс недоступен.")
-                    return
-                if row["expires_at"] and row["expires_at"] < time.time():
-                    await message.answer("Срок действия ключа истёк, сброс недоступен.")
-                    return
-                if row["resets_left"] <= 0:
-                    await message.answer(
-                        "Лимит сбросов исчерпан. Обратитесь в поддержку — /support ваш вопрос"
-                    )
-                    return
-
-                cur.execute(
-                    "UPDATE keys SET hwid = NULL, activations = 0, resets_left = resets_left - 1 "
-                    "WHERE key = %s",
-                    (row["key"],),
+                    "UPDATE keys SET hwid = NULL, activations = 0 WHERE key = %s",
+                    (key,),
                 )
                 conn.commit()
-                resets_left = row["resets_left"] - 1
+                found = cur.rowcount > 0
     except Exception as e:
         logging.exception("Ошибка при сбросе привязки")
-        await message.answer("Не удалось сбросить привязку, попробуйте позже.")
+        await message.answer(f"Не удалось сбросить привязку: {e}")
         return
 
-    await message.answer(f"✅ Привязка устройства сброшена. Осталось сбросов: {resets_left}")
+    if found:
+        await message.answer(f"✅ Привязка устройства для ключа {key} сброшена.")
+    else:
+        await message.answer(f"Ключ {key} не найден.")
 
 
 @dp.message(Command("support"))
