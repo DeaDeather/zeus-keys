@@ -486,6 +486,28 @@ async function refreshProfile() {
   const profileDownloadLink = document.getElementById('profileDownloadLink');
   profileDownloadLink.style.display = 'none';
 
+  function renderLastKnown() {
+    // Показывает последние известные значения (из localStorage), если есть,
+    // вместо пустого «—» — переживает и обрыв связи, и перезагрузку страницы.
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('zaetheron_last_check') || 'null'); } catch (e) {}
+    if (cached && cached.key === savedKey) {
+      document.getElementById('lExpires').textContent = cached.expires_at
+        ? new Date(cached.expires_at * 1000).toLocaleDateString('ru-RU')
+        : 'бессрочно';
+      document.getElementById('lHwid').textContent = cached.hwid_bound ? 'привязано' : 'не привязано';
+      document.getElementById('lResets').textContent = cached.resets_left ?? '—';
+      if (cached.download_url) {
+        profileDownloadLink.href = cached.download_url;
+        profileDownloadLink.style.display = 'block';
+      }
+    } else {
+      document.getElementById('lExpires').textContent = '—';
+      document.getElementById('lHwid').textContent = '—';
+      document.getElementById('lResets').textContent = '—';
+    }
+  }
+
   try {
     const res = await fetchWithRetry(`${API_BASE}/check`, {
       method: 'POST',
@@ -504,17 +526,21 @@ async function refreshProfile() {
         profileDownloadLink.href = data.download_url;
         profileDownloadLink.style.display = 'block';
       }
+      // запоминаем последнее успешное состояние на случай будущих сбоев связи
+      localStorage.setItem('zaetheron_last_check', JSON.stringify({
+        key: savedKey,
+        expires_at: data.expires_at,
+        hwid_bound: data.hwid_bound,
+        resets_left: data.resets_left,
+        download_url: data.download_url,
+      }));
     } else {
       document.getElementById('lStatus').innerHTML = `<span class="badge-err">${reasonToText(data.detail)}</span>`;
-      document.getElementById('lExpires').textContent = '—';
-      document.getElementById('lHwid').textContent = '—';
-      document.getElementById('lResets').textContent = '—';
+      renderLastKnown();
     }
   } catch (e) {
     document.getElementById('lStatus').innerHTML = '<span class="badge-err">нет связи с сервером</span>';
-    document.getElementById('lExpires').textContent = '—';
-    document.getElementById('lHwid').textContent = '—';
-    document.getElementById('lResets').textContent = '—';
+    renderLastKnown();
   }
 }
 
