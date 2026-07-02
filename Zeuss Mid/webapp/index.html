@@ -279,6 +279,7 @@
         <div class="row"><span>Действует до</span><span id="lExpires" class="mono">—</span></div>
         <div class="row"><span>Устройство</span><span id="lHwid">—</span></div>
         <div class="row"><span>Сбросов HWID осталось</span><span id="lResets" class="mono">—</span></div>
+        <a id="profileDownloadLink" class="download-btn" style="display:none" href="#">Скачать клиент</a>
         <button id="resetHwidBtn" class="check-btn danger-btn">Сбросить привязку устройства</button>
         <button id="forgetKeyBtn" class="link-btn">Убрать ключ из профиля</button>
         <div id="profileStatus" class="status"></div>
@@ -311,21 +312,43 @@ tabs.key.btn.onclick = () => showTab('key');
 tabs.profile.btn.onclick = () => showTab('profile');
 document.getElementById('goToKeyTab').onclick = () => showTab('key');
 
-/* ---------- покупка: сообщаем боту, бот пересылает админу ---------- */
+/* ---------- покупка: напрямую через сервер (надёжнее, чем tg.sendData) ---------- */
 document.querySelectorAll('.plan .buy-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const plan = btn.closest('.plan');
-    const payload = {
-      action: 'buy',
-      plan: plan.dataset.plan,
-      label: plan.dataset.label,
-      price: plan.dataset.price
-    };
-    if (tg) {
-      tg.sendData(JSON.stringify(payload));
-      tg.HapticFeedback?.impactOccurred('light');
-    } else {
+  btn.addEventListener('click', async () => {
+    if (!tg || !tg.initData) {
       alert('Открой это через Telegram, чтобы оформить покупку.');
+      return;
+    }
+    const plan = btn.closest('.plan');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const res = await fetch(`${window.location.origin}/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: plan.dataset.plan,
+          label: plan.dataset.label,
+          price: plan.dataset.price,
+          init_data: tg.initData
+        })
+      });
+      if (res.ok) {
+        tg.HapticFeedback?.impactOccurred('light');
+        if (tg.showAlert) {
+          tg.showAlert('Заявка отправлена! Проверьте личные сообщения от бота.');
+        } else {
+          alert('Заявка отправлена! Проверьте личные сообщения от бота.');
+        }
+      } else {
+        alert('Не удалось отправить заявку, попробуйте ещё раз.');
+      }
+    } catch (e) {
+      alert('Нет связи с сервером, попробуйте позже.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   });
 });
@@ -439,6 +462,8 @@ async function refreshProfile() {
   filledEl.style.display = 'block';
   document.getElementById('lKey').textContent = savedKey;
   document.getElementById('lStatus').textContent = 'Проверяем…';
+  const profileDownloadLink = document.getElementById('profileDownloadLink');
+  profileDownloadLink.style.display = 'none';
 
   try {
     const res = await fetch(`${API_BASE}/check`, {
@@ -454,6 +479,10 @@ async function refreshProfile() {
         : 'бессрочно';
       document.getElementById('lHwid').textContent = data.hwid_bound ? 'привязано' : 'не привязано';
       document.getElementById('lResets').textContent = data.resets_left ?? '—';
+      if (data.download_url) {
+        profileDownloadLink.href = data.download_url;
+        profileDownloadLink.style.display = 'block';
+      }
     } else {
       document.getElementById('lStatus').innerHTML = `<span class="badge-err">${reasonToText(data.detail)}</span>`;
       document.getElementById('lExpires').textContent = '—';
