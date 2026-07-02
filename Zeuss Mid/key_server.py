@@ -22,6 +22,10 @@ from pydantic import BaseModel
 
 DATABASE_URL  = os.environ["DATABASE_URL"]  # Railway подставляет автоматически
 ADMIN_TOKEN   = os.environ.get("ZEUS_ADMIN_TOKEN", "change-me-now")
+DOWNLOAD_URL  = os.environ.get(
+    "DOWNLOAD_URL",
+    "https://drive.google.com/file/d/1sMyDNsyQUdOPkn2Pns8I13f58IQ7tgS8/view?usp=drive_link",
+)
 
 app = FastAPI(title="Zeus Midnight License Server")
 
@@ -54,6 +58,8 @@ def init_db():
                     created_at BIGINT
                 )
             """)
+            # На случай, если таблица уже существовала без этой колонки
+            cur.execute("ALTER TABLE keys ADD COLUMN IF NOT EXISTS telegram_id BIGINT")
         conn.commit()
 
 init_db()
@@ -72,6 +78,9 @@ class DeactivateReq(BaseModel):
     admin_token: str
 
 class ResetHwidReq(BaseModel):
+    key: str
+
+class CheckReq(BaseModel):
     key: str
 
 
@@ -147,6 +156,29 @@ def deactivate(req: DeactivateReq):
             if cur.rowcount == 0:
                 raise HTTPException(404, "Ключ не найден")
         return {"ok": True}
+
+
+@app.post("/check")
+def check(req: CheckReq):
+    """Используется мини-аппом: показывает статус ключа и ссылку на скачивание."""
+    key = _norm(req.key)
+    with closing(db()) as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM keys WHERE key = %s", (key,))
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(404, "not_found")
+            if not row["active"]:
+                raise HTTPException(403, "revoked")
+            if row["expires_at"] and row["expires_at"] < time.time():
+                raise HTTPException(403, "expired")
+            return {
+                "ok": True,
+                "expires_at": row["expires_at"],
+                "hwid_bound": row["hwid"] is not None,
+                "resets_left": row["resets_left"],
+                "download_url": DOWNLOAD_URL,
+            }
 
 
 @app.post("/reset_hwid")
