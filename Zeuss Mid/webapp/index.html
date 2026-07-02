@@ -339,6 +339,10 @@ document.querySelectorAll('.plan .buy-btn').forEach(btn => {
         } else {
           alert('Заявка отправлена! Проверьте личные сообщения от бота.');
         }
+      } else if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        const msg = data.detail || 'Слишком много заявок. Попробуйте позже.';
+        if (tg.showAlert) tg.showAlert(msg); else alert(msg);
       } else {
         alert('Не удалось отправить заявку, попробуйте ещё раз.');
       }
