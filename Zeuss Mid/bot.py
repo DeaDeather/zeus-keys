@@ -79,7 +79,11 @@ def webapp_keyboard() -> InlineKeyboardMarkup:
 async def start(message: Message):
     await message.answer(
         "Zaetheron Industry\n\n"
-        "Тарифы, статус ключа и скачивание клиента — в мини-приложении ниже.",
+        "Тарифы, статус ключа и скачивание клиента — в мини-приложении ниже.\n\n"
+        "Команды:\n"
+        "/mykey — посмотреть свой ключ и его статус\n"
+        "/resethwid — сбросить привязку устройства к своему ключу\n"
+        "/support ТЕКСТ — написать в поддержку",
         reply_markup=webapp_keyboard(),
     )
 
