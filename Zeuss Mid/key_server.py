@@ -40,6 +40,18 @@ SELLER_USERNAME = os.environ.get("SELLER_USERNAME", "hopeyng")
 app = FastAPI(title="Zeus Midnight License Server")
 
 
+@app.exception_handler(psycopg2.OperationalError)
+async def db_error_handler(request, exc):
+    """Если БД недоступна даже после ретраев в db() — отдаём клиенту чистый
+    JSON-ответ вместо обрыва соединения (клиент понимает, что сервер жив,
+    просто временно не может достучаться до базы, и может повторить запрос)."""
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=503,
+        content={"ok": False, "detail": "db_temporarily_unavailable"},
+    )
+
+
 @app.get("/app")
 def webapp():
     """Отдаёт Telegram Mini App (webapp/index.html)."""
@@ -47,9 +59,21 @@ def webapp():
 
 
 def db():
-    conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
-    conn.autocommit = False
-    return conn
+    """Подключение к Postgres с несколькими попытками.
+    На приватной сети Railway изредка бывают короткие TCP-обрывы между
+    сервисом и Postgres — при первой неудаче тихо пробуем переподключиться,
+    прежде чем отдавать ошибку клиенту."""
+    last_err = None
+    for attempt in range(3):
+        try:
+            conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+            conn.autocommit = False
+            return conn
+        except psycopg2.OperationalError as e:
+            last_err = e
+            if attempt < 2:
+                time.sleep(0.4 * (attempt + 1))
+    raise last_err
 
 
 def verify_init_data(init_data: str):
