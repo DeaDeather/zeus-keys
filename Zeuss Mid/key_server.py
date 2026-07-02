@@ -1,60 +1,52 @@
 """
 Zeus Midnight — сервер лицензионных ключей.
+БД: PostgreSQL (Railway Postgres — данные сохраняются между рестартами).
 
-Запуск:
-    pip install fastapi uvicorn
-    python key_server.py
+Переменные окружения:
+    DATABASE_URL       — автоматически задаётся Railway при подключении Postgres
+    ZEUS_ADMIN_TOKEN   — токен для /deactivate (поменяй в Railway Variables)
 
-По умолчанию слушает http://0.0.0.0:8000
-Хранилище — SQLite файл keys.db рядом со скриптом (создаётся сам).
-
-Эндпоинты:
-    POST /activate    {key, hwid}                   — первая активация: привязывает HWID к ключу
-    POST /validate     {key, hwid}                   — проверка при каждом запуске программы
-    POST /reset_hwid   {key}                         — юзер сам открепляет ключ от старого ПК (лимит resets_left)
-    POST /deactivate   {key, admin_token}             — админ принудительно открепляет ключ от ПК
-
-Ключами управляет manage_keys.py (добавление/список/отзыв/срок действия).
+Запуск локально:
+    pip install fastapi uvicorn psycopg2-binary
+    DATABASE_URL=postgresql://... python key_server.py
 """
 import os
-import sqlite3
-import secrets
 import time
-from contextlib import closing
 
+import psycopg2
+import psycopg2.extras
+from contextlib import closing
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "keys.db")
-
-# Токен для административных операций (deactivate и т.п.).
-# Поменяйте на свой и держите в секрете — лучше через переменную окружения.
-ADMIN_TOKEN = os.environ.get("ZEUS_ADMIN_TOKEN", "change-me-now")
+DATABASE_URL  = os.environ["DATABASE_URL"]  # Railway подставляет автоматически
+ADMIN_TOKEN   = os.environ.get("ZEUS_ADMIN_TOKEN", "change-me-now")
 
 app = FastAPI(title="Zeus Midnight License Server")
 
 
 def db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = False
     return conn
 
 
 def init_db():
     with closing(db()) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS keys (
-                key TEXT PRIMARY KEY,
-                hwid TEXT,                 -- NULL пока не активирован
-                active INTEGER DEFAULT 1,  -- 0 = отозван вручную
-                max_activations INTEGER DEFAULT 1,
-                activations INTEGER DEFAULT 0,
-                expires_at INTEGER,        -- unix timestamp или NULL = бессрочный
-                resets_left INTEGER DEFAULT 2,  -- сколько раз юзер сам может сменить ПК
-                note TEXT,
-                created_at INTEGER
-            )
-        """)
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS keys (
+                    key TEXT PRIMARY KEY,
+                    hwid TEXT,
+                    active INTEGER DEFAULT 1,
+                    max_activations INTEGER DEFAULT 1,
+                    activations INTEGER DEFAULT 0,
+                    expires_at BIGINT,
+                    resets_left INTEGER DEFAULT 2,
+                    note TEXT,
+                    created_at BIGINT
+                )
+            """)
         conn.commit()
 
 init_db()
@@ -81,7 +73,6 @@ def _norm(key: str) -> str:
 
 
 def _row_status(row, hwid):
-    """Возвращает (ok: bool, reason: str)"""
     if row is None:
         return False, "not_found"
     if not row["active"]:
@@ -97,45 +88,43 @@ def _row_status(row, hwid):
 def activate(req: ActivateReq):
     key = _norm(req.key)
     with closing(db()) as conn:
-        row = conn.execute("SELECT * FROM keys WHERE key = ?", (key,)).fetchone()
-        if row is None:
-            raise HTTPException(404, "Ключ не найден")
-        if not row["active"]:
-            raise HTTPException(403, "Ключ отозван")
-        if row["expires_at"] and row["expires_at"] < time.time():
-            raise HTTPException(403, "Срок действия ключа истёк")
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM keys WHERE key = %s", (key,))
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(404, "Ключ не найден")
+            if not row["active"]:
+                raise HTTPException(403, "Ключ отозван")
+            if row["expires_at"] and row["expires_at"] < time.time():
+                raise HTTPException(403, "Срок действия ключа истёк")
 
-        # Уже привязан к этому HWID — просто подтверждаем
-        if row["hwid"] == req.hwid:
-            return {"ok": True, "status": "already_active"}
+            if row["hwid"] == req.hwid:
+                return {"ok": True, "status": "already_active"}
 
-        # Ещё не привязан — привязываем, если есть свободные активации
-        if row["hwid"] is None:
-            if row["activations"] >= row["max_activations"]:
-                raise HTTPException(403, "Превышен лимит активаций")
-            conn.execute(
-                "UPDATE keys SET hwid = ?, activations = activations + 1 WHERE key = ?",
-                (req.hwid, key),
-            )
-            conn.commit()
-            return {"ok": True, "status": "activated"}
+            if row["hwid"] is None:
+                if row["activations"] >= row["max_activations"]:
+                    raise HTTPException(403, "Превышен лимит активаций")
+                cur.execute(
+                    "UPDATE keys SET hwid = %s, activations = activations + 1 WHERE key = %s",
+                    (req.hwid, key),
+                )
+                conn.commit()
+                return {"ok": True, "status": "activated"}
 
-        # Привязан к другому устройству
-        raise HTTPException(409, "Ключ уже активирован на другом устройстве")
+            raise HTTPException(409, "Ключ уже активирован на другом устройстве")
 
 
 @app.post("/validate")
 def validate(req: ValidateReq):
     key = _norm(req.key)
     with closing(db()) as conn:
-        row = conn.execute("SELECT * FROM keys WHERE key = ?", (key,)).fetchone()
-        ok, reason = _row_status(row, req.hwid)
-        if not ok:
-            raise HTTPException(403, reason)
-        return {
-            "ok": True,
-            "expires_at": row["expires_at"],
-        }
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM keys WHERE key = %s", (key,))
+            row = cur.fetchone()
+            ok, reason = _row_status(row, req.hwid)
+            if not ok:
+                raise HTTPException(403, reason)
+            return {"ok": True, "expires_at": row["expires_at"]}
 
 
 @app.post("/deactivate")
@@ -144,33 +133,33 @@ def deactivate(req: DeactivateReq):
         raise HTTPException(401, "Неверный admin_token")
     key = _norm(req.key)
     with closing(db()) as conn:
-        cur = conn.execute(
-            "UPDATE keys SET hwid = NULL, activations = 0 WHERE key = ?", (key,))
-        conn.commit()
-        if cur.rowcount == 0:
-            raise HTTPException(404, "Ключ не найден")
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE keys SET hwid = NULL, activations = 0 WHERE key = %s", (key,))
+            conn.commit()
+            if cur.rowcount == 0:
+                raise HTTPException(404, "Ключ не найден")
         return {"ok": True}
 
 
 @app.post("/reset_hwid")
 def reset_hwid(req: ResetHwidReq):
-    """Пользователь сам открепляет ключ от старого ПК (например, после
-    переустановки Windows), без обращения к админу. Лимит — resets_left,
-    задаётся при создании ключа (manage_keys.py add --resets N)."""
     key = _norm(req.key)
     with closing(db()) as conn:
-        row = conn.execute("SELECT * FROM keys WHERE key = ?", (key,)).fetchone()
-        if row is None:
-            raise HTTPException(404, "Ключ не найден")
-        if not row["active"]:
-            raise HTTPException(403, "Ключ отозван")
-        if row["resets_left"] <= 0:
-            raise HTTPException(403, "Лимит самостоятельных сбросов исчерпан, обратитесь к продавцу")
-        conn.execute(
-            "UPDATE keys SET hwid = NULL, activations = 0, resets_left = resets_left - 1 WHERE key = ?",
-            (key,),
-        )
-        conn.commit()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM keys WHERE key = %s", (key,))
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(404, "Ключ не найден")
+            if not row["active"]:
+                raise HTTPException(403, "Ключ отозван")
+            if row["resets_left"] <= 0:
+                raise HTTPException(403, "Лимит сбросов исчерпан, обратитесь к продавцу")
+            cur.execute(
+                "UPDATE keys SET hwid = NULL, activations = 0, resets_left = resets_left - 1 WHERE key = %s",
+                (key,),
+            )
+            conn.commit()
         return {"ok": True, "resets_left": row["resets_left"] - 1}
 
 
