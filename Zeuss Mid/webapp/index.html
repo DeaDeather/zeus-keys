@@ -183,6 +183,36 @@
     text-align:center; margin-top:26px; font-size:11.5px; color:var(--text-muted);
     font-family:'JetBrains Mono', monospace; letter-spacing:0.04em;
   }
+  .disclaimer{
+    text-align:center; margin-top:14px; font-size:10.5px; line-height:1.6;
+    color:var(--text-muted); opacity:0.75; padding:0 6px;
+  }
+  .opt-section{ margin-bottom:16px; }
+  .opt-section h3{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:15px;
+    margin:0 0 10px; color:var(--tiffany);
+  }
+  .opt-list{ margin:0; padding-left:18px; font-size:13px; line-height:1.7; color:var(--text-primary); }
+  .opt-list li{ margin-bottom:4px; }
+  .dns-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:8px 0; border-top:1px solid rgba(255,255,255,0.06); font-size:13px;
+  }
+  .dns-row:first-child{ border-top:none; }
+  .dns-name{ font-weight:600; }
+  .dns-addr{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--tiffany); text-align:right; }
+  .country-pill{
+    display:inline-block; background:rgba(95,228,211,0.12); border:1px solid var(--card-border);
+    border-radius:20px; padding:5px 14px; font-family:'JetBrains Mono', monospace;
+    font-size:12.5px; margin-bottom:14px;
+  }
+  .report-box{ margin-top:14px; }
+  .report-textarea{
+    width:100%; min-height:70px; padding:12px; border-radius:12px; resize:vertical;
+    background:rgba(0,0,0,0.35); border:1px solid var(--card-border);
+    color:var(--text-primary); font-family:'Inter', sans-serif; font-size:13.5px; outline:none;
+  }
+  .report-textarea:focus{ border-color:var(--tiffany); }
 
   .flying-title{
     position:fixed; top:14%; left:-45%;
@@ -220,6 +250,7 @@
     <button id="tab-buy" class="active">Тарифы</button>
     <button id="tab-key">Ключ</button>
     <button id="tab-profile">Профиль</button>
+    <button id="tab-optimize" style="display:none">Оптимизация</button>
   </div>
 
   <section id="view-buy" class="view active">
@@ -283,9 +314,88 @@
         <div id="profileStatus" class="status"></div>
       </div>
     </div>
+
+    <div class="card report-box">
+      <label>Сообщить о проблеме</label>
+      <textarea id="reportText" class="report-textarea" placeholder="Опишите проблему…"></textarea>
+      <button id="reportBtn" class="check-btn" style="margin-top:10px;">Отправить репорт</button>
+      <div id="reportStatus" class="status"></div>
+    </div>
+  </section>
+
+  <section id="view-optimize" class="view">
+    <div class="card opt-section">
+      <h3>Ваш регион</h3>
+      <div id="countryPill" class="country-pill">определяем…</div>
+      <p class="muted-text" style="margin-top:0;">
+        Ниже — публичные DNS-резолверы (не VPN, трафик не туннелируется — меняется только то,
+        какой сервер отвечает на DNS-запросы). Рекомендуем IPv6-адреса, с IPv4 как резерв.
+      </p>
+    </div>
+
+    <div class="card opt-section" style="margin-top:14px;">
+      <h3>DNS-серверы</h3>
+      <div class="dns-row"><span class="dns-name">Cloudflare (IPv6)</span><span class="dns-addr">2606:4700:4700::1111<br>2606:4700:4700::1001</span></div>
+      <div class="dns-row"><span class="dns-name">Cloudflare (IPv4)</span><span class="dns-addr">1.1.1.1 / 1.0.0.1</span></div>
+      <div class="dns-row"><span class="dns-name">Quad9 (IPv6)</span><span class="dns-addr">2620:fe::fe<br>2620:fe::9</span></div>
+      <div class="dns-row"><span class="dns-name">Quad9 (IPv4)</span><span class="dns-addr">9.9.9.9 / 149.112.112.112</span></div>
+      <div class="dns-row"><span class="dns-name">Google (IPv6)</span><span class="dns-addr">2001:4860:4860::8888<br>2001:4860:4860::8844</span></div>
+      <div class="dns-row"><span class="dns-name">Google (IPv4)</span><span class="dns-addr">8.8.8.8 / 8.8.4.4</span></div>
+    </div>
+
+    <div class="card opt-section" style="margin-top:14px;">
+      <h3>Как настроить DNS на iPhone</h3>
+      <ol class="opt-list">
+        <li>Wi-Fi: Настройки → Wi-Fi → значок (i) у вашей сети → «Настроить DNS» → «Вручную» → удалить старые адреса и добавить нужные.</li>
+        <li>Сотовая сеть: системный DNS для мобильного интернета напрямую в «Настройках» не меняется — используйте официальное приложение «1.1.1.1» (Cloudflare) или «Quad9 Connect». На iOS они технически регистрируются как VPN-профиль (так требует Apple API), но никуда не туннелируют трафик — только шифруют DNS-запросы.</li>
+        <li>После смены DNS перезапустите Wi-Fi (выключить/включить) или перезагрузите телефон.</li>
+      </ol>
+    </div>
+
+    <div class="card opt-section" style="margin-top:14px;">
+      <h3>Общая оптимизация устройства</h3>
+      <ul class="opt-list">
+        <li>Настройки → Основные → Обновление ПО — держите iOS актуальной.</li>
+        <li>Настройки → Основные → Хранилище iPhone — раз в месяц чистить неиспользуемое.</li>
+        <li>Настройки → Основные → Фоновое обновление приложений — отключить для неиспользуемых приложений.</li>
+        <li>Перезагружайте телефон каждые несколько дней — сбрасывает утечки памяти в фоновых процессах.</li>
+        <li>Настройки → Батарея → проверяйте «Работоспособность аккумулятора» — сильно изношенная батарея сама снижает производительность.</li>
+      </ul>
+    </div>
+
+    <div class="card opt-section" style="margin-top:14px;">
+      <h3>Для игр</h3>
+      <ul class="opt-list">
+        <li>Подключайтесь к Wi-Fi в диапазоне 5 ГГц, а не 2.4 ГГц — ниже задержка, меньше помех.</li>
+        <li>Закрывайте фоновые приложения перед игрой (смахнуть вверх в App Switcher).</li>
+        <li>Отключите Bluetooth, если не используете беспроводной контроллер/наушники.</li>
+        <li>iOS 18+: включите «Игровой режим» — активируется автоматически в полноэкранных играх, приоритизирует CPU/GPU и снижает задержку Bluetooth-аксессуаров.</li>
+        <li>Отключите уведомления фоновых приложений на время сессии (Фокусирование → «Игра» в Пункте управления).</li>
+        <li>Для соревновательных игр по возможности используйте проводные наушники — меньше задержка звука, чем у Bluetooth.</li>
+      </ul>
+    </div>
+
+    <div class="card opt-section" style="margin-top:14px;">
+      <h3>Качество картинки</h3>
+      <ul class="opt-list">
+        <li>Настройки → Экран и яркость → True Tone — выключите для точной, некорректируемой цветопередачи.</li>
+        <li>Ночной режим (Night Shift) — выключайте на время игр/просмотра, чтобы не искажались цвета.</li>
+        <li>Включайте HDR для видео/контента, где он поддерживается экраном.</li>
+        <li>Настройки → Специальные возможности → Дисплей — «Уменьшение движения» выключено = более плавная анимация; включено = ниже нагрузка на GPU и стабильнее FPS в тяжёлых играх.</li>
+        <li>Ручная яркость на максимум только при необходимости — авто-яркость экономит и не искажает восприятие цвета при чтении экрана в помещении.</li>
+      </ul>
+    </div>
   </section>
 
   <footer>zaetheron industry · поддержка через бота</footer>
+  <p class="disclaimer">
+    Используя сервис и загружаемые материалы, вы подтверждаете, что делаете это добровольно и на свой риск.
+    Команда Zaetheron не несёт ответственности за работоспособность, безопасность или любые последствия для вашего
+    персонального компьютера или иного устройства, возникшие в результате использования загруженных материалов —
+    включая возможную потерю данных, сбои в работе ОС/приложений или блокировки со стороны третьих лиц.
+    Рекомендации по оптимизации и сетевым настройкам приведены в справочных целях; вносите изменения в системные
+    настройки самостоятельно и осознанно.
+  </p>
 </main>
 
 <script>
@@ -297,6 +407,7 @@ const tabs = {
   buy: { btn: document.getElementById('tab-buy'), view: document.getElementById('view-buy') },
   key: { btn: document.getElementById('tab-key'), view: document.getElementById('view-key') },
   profile: { btn: document.getElementById('tab-profile'), view: document.getElementById('view-profile') },
+  optimize: { btn: document.getElementById('tab-optimize'), view: document.getElementById('view-optimize') },
 };
 function showTab(name) {
   Object.entries(tabs).forEach(([k, t]) => {
@@ -304,19 +415,86 @@ function showTab(name) {
     t.view.classList.toggle('active', k === name);
   });
   if (name === 'profile') refreshProfile();
+  if (name === 'optimize') initOptimizeTab();
 }
 tabs.buy.btn.onclick = () => showTab('buy');
 tabs.key.btn.onclick = () => showTab('key');
 tabs.profile.btn.onclick = () => showTab('profile');
+tabs.optimize.btn.onclick = () => showTab('optimize');
 document.getElementById('goToKeyTab').onclick = () => showTab('key');
+
+/* ---------- вкладка «Оптимизация»: только iPhone + валидный ключ ---------- */
+function isIOSDevice() {
+  if (tg?.platform === 'ios') return true;
+  return /iPhone/.test(navigator.userAgent);
+}
+let hasValidKey = false;
+function updateOptimizeTabVisibility() {
+  const show = isIOSDevice() && hasValidKey;
+  tabs.optimize.btn.style.display = show ? '' : 'none';
+  if (!show && tabs.optimize.view.classList.contains('active')) showTab('buy');
+}
+let optimizeInited = false;
+async function initOptimizeTab() {
+  if (optimizeInited) return;
+  optimizeInited = true;
+  const pill = document.getElementById('countryPill');
+  try {
+    const res = await fetch('https://ipapi.co/json/');
+    const data = await res.json();
+    pill.textContent = data.country_name ? `${data.country_name} (${data.country_code})` : 'не удалось определить';
+  } catch (e) {
+    pill.textContent = 'не удалось определить';
+  }
+}
+
+/* ---------- кулдаун 5 минут: общий хелпер для покупки и репорта ---------- */
+const COOLDOWN_MS = 5 * 60 * 1000;
+
+function cooldownRemaining(storageKey) {
+  const until = parseInt(localStorage.getItem(storageKey) || '0', 10);
+  return Math.max(0, until - Date.now());
+}
+function setCooldown(storageKey) {
+  localStorage.setItem(storageKey, String(Date.now() + COOLDOWN_MS));
+}
+function formatRemaining(ms) {
+  const s = Math.ceil(ms / 1000);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
+// Запускает обратный отсчёт на кнопке; onDone возвращает исходный текст/состояние
+function runCooldownUI(btn, storageKey, baseLabel) {
+  const remaining = cooldownRemaining(storageKey);
+  if (remaining <= 0) {
+    btn.disabled = false;
+    btn.textContent = baseLabel;
+    return;
+  }
+  btn.disabled = true;
+  const tick = () => {
+    const left = cooldownRemaining(storageKey);
+    if (left <= 0) {
+      btn.disabled = false;
+      btn.textContent = baseLabel;
+      return;
+    }
+    btn.textContent = `Подождите ${formatRemaining(left)}`;
+    setTimeout(tick, 1000);
+  };
+  tick();
+}
 
 /* ---------- покупка: напрямую через сервер (надёжнее, чем tg.sendData) ---------- */
 document.querySelectorAll('.plan .buy-btn').forEach(btn => {
+  runCooldownUI(btn, 'zaetheron_buy_cooldown_until', 'Купить');
   btn.addEventListener('click', async () => {
     if (!tg || !tg.initData) {
       alert('Открой это через Telegram, чтобы оформить покупку.');
       return;
     }
+    if (cooldownRemaining('zaetheron_buy_cooldown_until') > 0) return;
     const plan = btn.closest('.plan');
     const originalText = btn.textContent;
     btn.disabled = true;
@@ -334,20 +512,26 @@ document.querySelectorAll('.plan .buy-btn').forEach(btn => {
       });
       if (res.ok) {
         tg.HapticFeedback?.impactOccurred('light');
+        setCooldown('zaetheron_buy_cooldown_until');
+        document.querySelectorAll('.plan .buy-btn').forEach(b => runCooldownUI(b, 'zaetheron_buy_cooldown_until', 'Купить'));
         if (tg.showAlert) {
           tg.showAlert('Заявка отправлена! Проверьте личные сообщения от бота.');
         } else {
           alert('Заявка отправлена! Проверьте личные сообщения от бота.');
         }
+        return;
+      } else if (res.status === 429) {
+        setCooldown('zaetheron_buy_cooldown_until');
+        document.querySelectorAll('.plan .buy-btn').forEach(b => runCooldownUI(b, 'zaetheron_buy_cooldown_until', 'Купить'));
+        return;
       } else {
         alert('Не удалось отправить заявку, попробуйте ещё раз.');
       }
     } catch (e) {
       alert('Нет связи с сервером, попробуйте позже.');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = originalText;
     }
+    btn.disabled = false;
+    btn.textContent = originalText;
   });
 });
 
@@ -388,6 +572,8 @@ checkBtn.addEventListener('click', async () => {
         : 'Ключ активен бессрочно.';
       statusEl.classList.add('ok');
       localStorage.setItem('zaetheron_key', key);
+      hasValidKey = true;
+      updateOptimizeTabVisibility();
       if (data.download_url) {
         downloadLink.href = data.download_url;
         downloadLink.style.display = 'block';
@@ -480,19 +666,87 @@ async function refreshProfile() {
         profileDownloadLink.href = data.download_url;
         profileDownloadLink.style.display = 'block';
       }
+      hasValidKey = true;
     } else {
       document.getElementById('lStatus').innerHTML = `<span class="badge-err">${reasonToText(data.detail)}</span>`;
       document.getElementById('lExpires').textContent = '—';
       document.getElementById('lHwid').textContent = '—';
+      hasValidKey = false;
     }
   } catch (e) {
     document.getElementById('lStatus').innerHTML = '<span class="badge-err">нет связи с сервером</span>';
   }
+  updateOptimizeTabVisibility();
 }
 
 document.getElementById('forgetKeyBtn').addEventListener('click', () => {
   localStorage.removeItem('zaetheron_key');
+  hasValidKey = false;
+  updateOptimizeTabVisibility();
   refreshProfile();
+});
+
+// При запуске: если ключ уже сохранён — проверяем его в фоне, чтобы открыть вкладку «Оптимизация»
+if (localStorage.getItem('zaetheron_key')) {
+  refreshProfile();
+}
+
+/* ---------- репорт в поддержку с кулдауном 5 минут ---------- */
+const reportBtn = document.getElementById('reportBtn');
+const reportText = document.getElementById('reportText');
+const reportStatus = document.getElementById('reportStatus');
+runCooldownUI(reportBtn, 'zaetheron_report_cooldown_until', 'Отправить репорт');
+
+reportBtn.addEventListener('click', async () => {
+  reportStatus.className = 'status';
+  if (!tg || !tg.initData) {
+    reportStatus.textContent = 'Открой это через Telegram, чтобы отправить репорт.';
+    reportStatus.classList.add('err');
+    return;
+  }
+  if (cooldownRemaining('zaetheron_report_cooldown_until') > 0) return;
+  const text = reportText.value.trim();
+  if (!text) {
+    reportStatus.textContent = 'Опишите проблему перед отправкой.';
+    reportStatus.classList.add('err');
+    return;
+  }
+  const originalText = reportBtn.textContent;
+  reportBtn.disabled = true;
+  reportBtn.textContent = '...';
+  try {
+    const res = await fetch(`${window.location.origin}/report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        init_data: tg.initData,
+        key: localStorage.getItem('zaetheron_key') || null
+      })
+    });
+    if (res.ok) {
+      setCooldown('zaetheron_report_cooldown_until');
+      runCooldownUI(reportBtn, 'zaetheron_report_cooldown_until', 'Отправить репорт');
+      reportText.value = '';
+      reportStatus.textContent = 'Отправлено! Ответ придёт в чат с ботом.';
+      reportStatus.classList.add('ok');
+      return;
+    } else if (res.status === 429) {
+      setCooldown('zaetheron_report_cooldown_until');
+      runCooldownUI(reportBtn, 'zaetheron_report_cooldown_until', 'Отправить репорт');
+      reportStatus.textContent = 'Слишком часто — подождите перед следующей отправкой.';
+      reportStatus.classList.add('err');
+      return;
+    } else {
+      reportStatus.textContent = 'Не удалось отправить, попробуйте ещё раз.';
+      reportStatus.classList.add('err');
+    }
+  } catch (e) {
+    reportStatus.textContent = 'Нет связи с сервером.';
+    reportStatus.classList.add('err');
+  }
+  reportBtn.disabled = false;
+  reportBtn.textContent = originalText;
 });
 
 /* ---------- падающие звёзды ---------- */
