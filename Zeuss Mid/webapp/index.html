@@ -476,7 +476,6 @@ async function refreshProfile() {
         ? new Date(data.expires_at * 1000).toLocaleDateString('ru-RU')
         : 'бессрочно';
       document.getElementById('lHwid').textContent = data.hwid_bound ? 'привязано' : 'не привязано';
-      document.getElementById('lResets').textContent = data.resets_left ?? '—';
       if (data.download_url) {
         profileDownloadLink.href = data.download_url;
         profileDownloadLink.style.display = 'block';
@@ -485,7 +484,6 @@ async function refreshProfile() {
       document.getElementById('lStatus').innerHTML = `<span class="badge-err">${reasonToText(data.detail)}</span>`;
       document.getElementById('lExpires').textContent = '—';
       document.getElementById('lHwid').textContent = '—';
-      document.getElementById('lResets').textContent = '—';
     }
   } catch (e) {
     document.getElementById('lStatus').innerHTML = '<span class="badge-err">нет связи с сервером</span>';
