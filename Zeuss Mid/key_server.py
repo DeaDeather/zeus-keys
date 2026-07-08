@@ -94,17 +94,24 @@ def sign_mobileconfig(plist_bytes: bytes) -> bytes:
 # Кулдаун (в секундах) на повторные заявки на покупку / обращения в поддержку
 COOLDOWN_SECONDS = 5 * 60
 
-# DNS-резолверы для профиля «Оптимизация» (Quad9, IPv6, DNSSEC + блокировка вредоносных доменов).
+# DNS-резолвер для профиля «Оптимизация» — Quad9 через DNS over TLS.
+# Важно: рабочие профили com.apple.dnsSettings.managed для ручной установки
+# всегда используют шифрованный DNS (TLS/HTTPS) и указывают адреса и IPv4, и IPv6
+# сразу. Профиль с DNSProtocol=Cleartext и только IPv6-адресами — именно то,
+# на чём служба DNS Settings на iOS падает с «внутренней ошибкой».
+PRIVATE_DNS_SERVER_NAME = "dns.quad9.net"
 PRIVATE_DNS_SERVERS = [
+    "9.9.9.9",
+    "149.112.112.112",
     "2620:fe::fe",
     "2620:fe::9",
 ]
 
 
-def build_dns_mobileconfig(servers: list[str]) -> bytes:
-    """Генерирует конфигурационный профиль iOS (тип com.apple.dnsSettings.managed).
-    Меняет системный DNS (Wi-Fi + сотовая сеть) БЕЗ VPN-туннеля — трафик не проходит
-    через сторонний сервер, туннелируется только резолвинг имён.
+def build_dns_mobileconfig(servers: list[str], server_name: str) -> bytes:
+    """Генерирует конфигурационный профиль iOS (тип com.apple.dnsSettings.managed),
+    DNS over TLS на Quad9. Меняет системный DNS (Wi-Fi + сотовая сеть) БЕЗ VPN-туннеля —
+    трафик не проходит через сторонний сервер, шифруется только резолвинг имён.
     Установка требует явных действий владельца устройства: Настройки → Профиль загружен →
     Установить → код-пароль → Установить (несколько подтверждений на стороне iOS)."""
     payload_uuid = str(uuid.uuid4())
@@ -116,10 +123,13 @@ def build_dns_mobileconfig(servers: list[str]) -> bytes:
                 "PayloadUUID": payload_uuid,
                 "PayloadIdentifier": f"com.zaetheron.dns.{payload_uuid}",
                 "PayloadDisplayName": "ZAETHERON",
+                "PayloadDescription": "Configures device to use Quad9 Encrypted DNS over TLS",
                 "PayloadVersion": 1,
+                "ProhibitDisablement": False,
                 "DNSSettings": {
-                    "DNSProtocol": "Cleartext",
+                    "DNSProtocol": "TLS",
                     "ServerAddresses": servers,
+                    "ServerName": server_name,
                 },
             }
         ],
@@ -481,7 +491,7 @@ def optimize_mobileconfig(key: str):
             if row["expires_at"] and row["expires_at"] < time.time():
                 raise HTTPException(403, "expired")
 
-    config_bytes = build_dns_mobileconfig(PRIVATE_DNS_SERVERS)
+    config_bytes = build_dns_mobileconfig(PRIVATE_DNS_SERVERS, PRIVATE_DNS_SERVER_NAME)
     signed_bytes = sign_mobileconfig(config_bytes)
     return Response(
         content=signed_bytes,
