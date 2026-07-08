@@ -32,6 +32,9 @@ DOWNLOAD_URL  = os.environ.get(
     "https://drive.google.com/file/d/1sMyDNsyQUdOPkn2Pns8I13f58IQ7tgS8/view?usp=drive_link",
 )
 
+# Кулдаун (в секундах) на повторные заявки на покупку / обращения в поддержку
+COOLDOWN_SECONDS = 5 * 60
+
 # Нужны для отправки заявок на покупку прямо из мини-аппа, без sendData()
 BOT_TOKEN       = os.environ.get("BOT_TOKEN")
 ADMIN_CHAT_ID   = os.environ.get("ADMIN_CHAT_ID")
@@ -115,9 +118,42 @@ def init_db():
             """)
             # На случай, если таблица уже существовала без этой колонки
             cur.execute("ALTER TABLE keys ADD COLUMN IF NOT EXISTS telegram_id BIGINT")
+            # Кулдауны на /buy и /report — persist между рестартами, ключ = (user_id, action)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS request_cooldowns (
+                    user_id BIGINT NOT NULL,
+                    action TEXT NOT NULL,
+                    last_ts BIGINT NOT NULL,
+                    PRIMARY KEY (user_id, action)
+                )
+            """)
         conn.commit()
 
 init_db()
+
+
+def check_cooldown(conn, cur, user_id: int, action: str):
+    """Проверяет и, если разрешено, сразу обновляет кулдаун для (user_id, action).
+    Возвращает (allowed: bool, retry_after_seconds: int)."""
+    now = int(time.time())
+    cur.execute(
+        "SELECT last_ts FROM request_cooldowns WHERE user_id = %s AND action = %s",
+        (user_id, action),
+    )
+    row = cur.fetchone()
+    last_ts = row[0] if row else 0
+    elapsed = now - last_ts
+    if elapsed < COOLDOWN_SECONDS:
+        return False, COOLDOWN_SECONDS - elapsed
+    cur.execute(
+        """
+        INSERT INTO request_cooldowns (user_id, action, last_ts)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (user_id, action) DO UPDATE SET last_ts = EXCLUDED.last_ts
+        """,
+        (user_id, action, now),
+    )
+    return True, 0
 
 
 class ActivateReq(BaseModel):
@@ -144,6 +180,11 @@ class BuyReq(BaseModel):
     label: str
     price: str
     init_data: str
+
+class ReportReq(BaseModel):
+    message: str
+    init_data: str
+    key: str | None = None
 
 
 def _norm(key: str) -> str:
@@ -229,6 +270,14 @@ def buy(req: BuyReq):
         raise HTTPException(401, "invalid_init_data")
 
     user_id = user.get("id")
+
+    with closing(db()) as conn:
+        with conn.cursor() as cur:
+            allowed, retry_after = check_cooldown(conn, cur, user_id, "buy")
+            conn.commit()
+    if not allowed:
+        raise HTTPException(429, f"Слишком часто. Попробуйте через {retry_after} сек.")
+
     username = user.get("username")
     full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
 
@@ -255,6 +304,45 @@ def buy(req: BuyReq):
             f"Создать ключ: /addkey КЛЮЧ ДНИ {user_id}",
         )
 
+    return {"ok": True}
+
+
+@app.post("/report")
+def report(req: ReportReq):
+    """Мини-апп: отправить обращение/репорт в поддержку (тот же поток, что и /support у бота,
+    но доступно прямо из интерфейса). Ограничено кулдауном, чтобы не заваливать админа."""
+    user = verify_init_data(req.init_data)
+    if not user:
+        raise HTTPException(401, "invalid_init_data")
+
+    user_id = user.get("id")
+    text = req.message.strip()
+    if not text:
+        raise HTTPException(400, "empty_message")
+
+    with closing(db()) as conn:
+        with conn.cursor() as cur:
+            allowed, retry_after = check_cooldown(conn, cur, user_id, "report")
+            conn.commit()
+    if not allowed:
+        raise HTTPException(429, f"Слишком часто. Попробуйте через {retry_after} сек.")
+
+    username = user.get("username")
+    uname = f"@{username}" if username else "(нет username)"
+    full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+
+    if ADMIN_CHAT_ID:
+        tg_send_message(
+            ADMIN_CHAT_ID,
+            "🆘 Репорт из мини-аппа\n\n"
+            f"От: {full_name} {uname}\n"
+            f"Telegram ID: {user_id}\n"
+            f"Ключ: {req.key or '—'}\n\n"
+            f"{text}\n\n"
+            f"Ответить через бота: /reply {user_id} текст ответа",
+        )
+
+    tg_send_message(user_id, "Обращение отправлено в поддержку, вам ответят в этом же чате с ботом.")
     return {"ok": True}
 
 
