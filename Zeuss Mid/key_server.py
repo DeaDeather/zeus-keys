@@ -168,6 +168,11 @@ def webapp():
     return FileResponse("webapp/index.html")
 
 
+@app.get("/optimize")
+def webapp_optimize():
+    return FileResponse("webapp/optimize.html")
+
+
 @app.get("/manifest.json")
 def manifest():
     return FileResponse("webapp/manifest.json", media_type="application/manifest+json")

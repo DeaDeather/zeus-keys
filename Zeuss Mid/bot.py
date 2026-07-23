@@ -53,6 +53,28 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 ADMIN_CHAT_ID = int(os.environ["ADMIN_CHAT_ID"])
 WEBAPP_URL = os.environ["WEBAPP_URL"]
 DATABASE_URL = os.environ.get("DATABASE_URL")  # нужна только для /addkey и /delkey
+
+
+def _resolve_optimize_url(webapp_url: str) -> str:
+    """Строит ссылку на optimize.html на основе WEBAPP_URL.
+
+    key_server.py отдаёт index.html по маршруту /app и optimize.html по
+    маршруту /optimize (оба — на корне домена, не друг в друге).
+    Поэтому берём схему+домен из WEBAPP_URL и просто добавляем /optimize.
+    Можно переопределить явно через переменную окружения OPTIMIZE_URL.
+    """
+    scheme_and_host = webapp_url.split("://", 1)
+    if len(scheme_and_host) == 2:
+        scheme, rest = scheme_and_host
+        host = rest.split("/", 1)[0]
+        return f"{scheme}://{host}/optimize"
+    return webapp_url.rstrip("/") + "/optimize"
+
+
+# Ссылка, которую откроет кнопка бота. По умолчанию высчитывается из WEBAPP_URL,
+# но если структура твоего хостинга другая — задай OPTIMIZE_URL напрямую в .env,
+# например OPTIMIZE_URL=https://zeus-keys-production.up.railway.app/optimize
+OPTIMIZE_URL = os.environ.get("OPTIMIZE_URL", _resolve_optimize_url(WEBAPP_URL))
 SELLER_USERNAME = os.environ.get("SELLER_USERNAME", "hopeyng")  # без @, для ссылки на оплату
 
 bot = Bot(token=BOT_TOKEN)
@@ -70,7 +92,7 @@ def is_admin(message: Message) -> bool:
 def webapp_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[[
-            InlineKeyboardButton(text="Открыть Zaetheron Industry", web_app=WebAppInfo(url=WEBAPP_URL))
+            InlineKeyboardButton(text="Открыть Zaetheron Industry", web_app=WebAppInfo(url=OPTIMIZE_URL))
         ]]
     )
 

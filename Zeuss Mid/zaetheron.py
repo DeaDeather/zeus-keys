@@ -23,7 +23,7 @@ from PyQt6.QtGui   import (
 # ═══════════════════════════════════════════════════════════════════
 #  APP SETTINGS  (хранится рядом со скриптом, переживает перезапуск)
 # ═══════════════════════════════════════════════════════════════════
-SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "zeus_settings.json")
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "zaetheron_settings.json")
 
 DEFAULT_SETTINGS = {
     "lang": "ru",
@@ -90,7 +90,7 @@ def _shade(hex_color, factor):
 #  (key_server.py из комплекта): сервер привязывает ключ к HWID этого
 #  ПК, может отозвать ключ, ограничить срок действия и число активаций.
 #  Если сервер недоступен (нет интернета), используется офлайн-грейс:
-#  последняя успешная проверка кэшируется в zeus_settings.json и
+#  последняя успешная проверка кэшируется в zaetheron_settings.json и
 #  считается валидной ещё OFFLINE_GRACE_DAYS дней.
 #
 #  Если KEY_SERVER_URL пустой — работает чисто офлайн-режим: ключ
@@ -107,11 +107,11 @@ OFFLINE_GRACE_DAYS = 3
 REQUEST_TIMEOUT = 6   # секунд
 
 VALID_KEYS = {
-    "ZEUS1-MIDNI-GHT00-DEMO1",
-    "ZEUS1-MIDNI-GHT00-DEMO2",
+    "ZAETHERON1-MIDNI-GHT00-DEMO1",
+    "ZAETHERON1-MIDNI-GHT00-DEMO2",
 }
 
-KEY_SALT = "zeus-midnight-v2"
+KEY_SALT = "zaetheron-midnight-v2"
 
 
 def _key_checksum_ok(key: str) -> bool:
@@ -253,10 +253,10 @@ TRANSLATIONS = {
         "tool_usb_polling_desc": "Отключает USB Selective Suspend — убирает программное усыпление USB-контроллера. Не меняет частоту опроса, заданную прошивкой устройства.",
         "tool_game_bar": "Отключить Xbox Game Bar",
         "tool_game_bar_desc": "Отключает оверлей записи игр Windows (GameDVR), который может создавать фоновую нагрузку.",
-        "tool_process_priority": "Высокий приоритет Zeus Midnight",
-        "tool_process_priority_desc": "Повышает приоритет процесса этого приложения. Действует только на сам Zeus Midnight, не на игры.",
+        "tool_process_priority": "Высокий приоритет Zaetheron Midnight",
+        "tool_process_priority_desc": "Повышает приоритет процесса этого приложения. Действует только на сам Zaetheron Midnight, не на игры.",
         "about": "О программе",
-        "version": "Zeus Midnight v2.2",
+        "version": "Zaetheron Midnight v2.2",
         "section_dev": "Раздел в разработке",
         "status_on": "Активен",
         "status_off": "Выключен",
@@ -272,7 +272,7 @@ TRANSLATIONS = {
         "reset_colors": "Сбросить",
         "apply_restart": "ПРИМЕНИТЬ И ПЕРЕЗАПУСТИТЬ",
         "restart_notice": "Изменения цвета применяются после перезапуска программы.",
-        "key_title": "ZEUS MIDNIGHT",
+        "key_title": "ZAETHERON MIDNIGHT",
         "key_subtitle": "Введите ключ доступа, чтобы продолжить",
         "key_placeholder": "XXXXX-XXXXX-XXXXX-XXXXX",
         "key_submit": "ВОЙТИ",
@@ -352,10 +352,10 @@ TRANSLATIONS = {
         "tool_usb_polling_desc": "Disables USB Selective Suspend — removes software sleep of the USB controller. Does not change the polling rate set by the device firmware.",
         "tool_game_bar": "Disable Xbox Game Bar",
         "tool_game_bar_desc": "Disables the Windows game recording overlay (GameDVR), which can create background load.",
-        "tool_process_priority": "High priority for Zeus Midnight",
-        "tool_process_priority_desc": "Raises this app's own process priority. Only affects Zeus Midnight, not games.",
+        "tool_process_priority": "High priority for Zaetheron Midnight",
+        "tool_process_priority_desc": "Raises this app's own process priority. Only affects Zaetheron Midnight, not games.",
         "about": "About",
-        "version": "Zeus Midnight v2.2",
+        "version": "Zaetheron Midnight v2.2",
         "section_dev": "Section Under Development",
         "status_on": "Active",
         "status_off": "Off",
@@ -371,7 +371,7 @@ TRANSLATIONS = {
         "reset_colors": "Reset",
         "apply_restart": "APPLY & RESTART",
         "restart_notice": "Color changes apply after the app restarts.",
-        "key_title": "ZEUS MIDNIGHT",
+        "key_title": "ZAETHERON MIDNIGHT",
         "key_subtitle": "Enter your access key to continue",
         "key_placeholder": "XXXXX-XXXXX-XXXXX-XXXXX",
         "key_submit": "UNLOCK",
@@ -391,7 +391,7 @@ def t(key):
 
 # ═══════════════════════════════════════════════════════════════════
 #  PALETTE - НАСТРАИВАЕМАЯ ТЕМА
-#  Базовые цвета берутся из zeus_settings.json (см. APP_SETTINGS выше).
+#  Базовые цвета берутся из zaetheron_settings.json (см. APP_SETTINGS выше).
 #  Изменить их можно в Настройках → Внешний вид; программа перезапу-
 #  скается, чтобы пересобрать все стили с новыми цветами.
 # ═══════════════════════════════════════════════════════════════════
@@ -502,7 +502,7 @@ class DynamicIsland(QWidget):
         self._anim_en   = True
         self._scale     = 1.0
         self._tick      = 0           # master counter
-        self._zeus_alpha = 0.0        # 0..1 breathe
+        self._zaetheron_alpha = 0.0        # 0..1 breathe
         self._music_expanded = True   # свёрнута ли музыка
         self._show_fps  = True
         self._show_ping = True
@@ -562,8 +562,8 @@ class DynamicIsland(QWidget):
     def _tick_fn(self):
         if self._anim_en:
             self._tick = (self._tick + 1) % 3600
-            # ZEUS пульс: 0→1→0 за ~2 сек
-            self._zeus_alpha = 0.5 + 0.5 * math.sin(math.radians(self._tick * 1.8))
+            # ZAETHERON пульс: 0→1→0 за ~2 сек
+            self._zaetheron_alpha = 0.5 + 0.5 * math.sin(math.radians(self._tick * 1.8))
         if hasattr(self, '_tick_callback') and self._tick_callback:
             self._tick_callback()
         self.update()
@@ -650,7 +650,7 @@ class DynamicIsland(QWidget):
         sc = self._scale
         # ── layout zones ──────────────────────────────────────────
         # Left column: FPS
-        # Center: ZEUS / MIDNIGHT
+        # Center: ZAETHERON / MIDNIGHT
         # Right column: PING
         # Bottom (if expanded): music + arrow
 
@@ -683,15 +683,15 @@ class DynamicIsland(QWidget):
             p.drawText(QRect(rx_col - 70, int(12 + 18*sc), 70, int(14*sc)),
                        Qt.AlignmentFlag.AlignRight, "ms PING")
 
-        # ── ZEUS (center, breathing) ──────────────────────────────
-        zeus_a = int(self._zeus_alpha * 255) if self._anim_en else 200
+        # ── ZAETHERON (center, breathing) ──────────────────────────────
+        zaetheron_a = int(self._zaetheron_alpha * 255) if self._anim_en else 200
         p.setFont(_font(int(13 * sc), QFont.Weight.Black))
-        p.setPen(QColor(217, 199, 168, zeus_a))
+        p.setPen(QColor(217, 199, 168, zaetheron_a))
         p.drawText(QRect(cx_mid - 60, 10, 120, int(22*sc)),
-                   Qt.AlignmentFlag.AlignCenter, "ZEUS")
+                   Qt.AlignmentFlag.AlignCenter, "ZAETHERON")
 
-        # MIDNIGHT (below ZEUS, dimmer)
-        mid_a = int(self._zeus_alpha * 140 + 60) if self._anim_en else 120
+        # MIDNIGHT (below ZAETHERON, dimmer)
+        mid_a = int(self._zaetheron_alpha * 140 + 60) if self._anim_en else 120
         p.setFont(_font(int(7 * sc), QFont.Weight.DemiBold))
         p.setPen(QColor(180, 162, 132, mid_a))
         p.drawText(QRect(cx_mid - 60, int(10 + 20*sc), 120, int(12*sc)),
@@ -2477,7 +2477,7 @@ class OptimizationOverlay(QWidget):
 
         p.setPen(QColor(180, 162, 132))
         p.setFont(_font(10, QFont.Weight.DemiBold))
-        p.drawText(QRect(cx, cy + 62, cw, 18), Qt.AlignmentFlag.AlignCenter, "ZEUS MIDNIGHT  ·  FPS BOOST MODE")
+        p.drawText(QRect(cx, cy + 62, cw, 18), Qt.AlignmentFlag.AlignCenter, "ZAETHERON MIDNIGHT  ·  FPS BOOST MODE")
 
         # Разделитель
         div_y = cy + 88
@@ -2562,14 +2562,14 @@ class SystemTweaks:
     «Инструменты» с тумблерами, и общим Game Boost).
 
     Важно по-честному: некоторые твики применяются только к ТЕКУЩЕМУ
-    процессу (самому Zeus Midnight), а не к играм — это отмечено в
+    процессу (самому Zaetheron Midnight), а не к играм — это отмечено в
     докстрингах и в подписях UI, чтобы не вводить в заблуждение.
     """
 
     # ── приоритет процесса (только для этого приложения) ───────────
     @staticmethod
     def process_priority_apply():
-        """HIGH priority для процесса Zeus Midnight (не для игр —
+        """HIGH priority для процесса Zaetheron Midnight (не для игр —
         ОС не даёт стороннему приложению легально менять приоритет
         чужого процесса без админ-прав и явного указания целевого PID)."""
         if sys.platform != 'win32': return
@@ -3195,7 +3195,7 @@ class Sidebar(QWidget):
             ll.addSpacing(8)
         tv=QVBoxLayout()
         tv.setSpacing(0)
-        t1=_tl("ZEUS",f"color:{TEXT_PRI};font:800 15px '{FONT_FAMILY}';letter-spacing:3px;")
+        t1=_tl("ZAETHERON",f"color:{TEXT_PRI};font:800 15px '{FONT_FAMILY}';letter-spacing:3px;")
         t2=_tl("MIDNIGHT",f"color:{TEXT_MUT};font:600 8px '{FONT_FAMILY}';letter-spacing:2.5px;")
         tv.addWidget(t1)
         tv.addWidget(t2)
@@ -3255,7 +3255,7 @@ class KeyGateWindow(QWidget):
     def __init__(self, on_success):
         super().__init__()
         self._on_success = on_success
-        self.setWindowTitle("Zeus Midnight — Access")
+        self.setWindowTitle("Zaetheron Midnight — Access")
         self.setFixedSize(420, 520)
         self.setWindowFlags(
             Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
@@ -3420,10 +3420,10 @@ class KeyGateWindow(QWidget):
 # ═══════════════════════════════════════════════════════════════════
 #  MAIN WINDOW
 # ═══════════════════════════════════════════════════════════════════
-class ZeusMidnight(QMainWindow):
+class ZaetheronMidnight(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Zeus Midnight Pro")
+        self.setWindowTitle("Zaetheron Midnight Pro")
         self.setMinimumSize(1020,660)
         self.resize(1120,730)
 
@@ -3609,7 +3609,7 @@ class ZeusMidnight(QMainWindow):
 
 # ═══════════════════════════════════════════════════════════════════
 #  HOT-RELOAD WATCHER
-#  Следит за изменениями zeus_midnight.py и перезапускает процесс
+#  Следит за изменениями zaetheron_midnight.py и перезапускает процесс
 # ═══════════════════════════════════════════════════════════════════
 class HotReloadWatcher(QThread):
     """Следит за mtime файла скрипта и перезапускает его при изменении."""
@@ -3663,7 +3663,7 @@ def main():
     state = {"win": None, "reload_watcher": None}
 
     def _launch_main_window():
-        win = ZeusMidnight()
+        win = ZaetheronMidnight()
         win.show()
         state["win"] = win
 
