@@ -69,8 +69,7 @@ button{font-family:inherit;cursor:pointer;}
 <button id="installBtn" class="glass" style="width:100%;padding:15px;border:1px solid rgba(180,170,255,0.3);background:linear-gradient(135deg,rgba(124,108,232,0.4),rgba(40,20,90,0.4));color:#f2f0ff;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;"><i class="ti ti-download"></i>Скачать приложение</button>
 <button id="optimizeBtn" class="glass" style="width:100%;padding:15px;border:1px solid rgba(180,170,255,0.3);color:#f2f0ff;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;"><i class="ti ti-bolt"></i>Оптимизировать сейчас</button>
 <button id="dnsBtn" class="glass" style="width:100%;padding:13px;color:#d8d4ff;font-size:13px;margin-bottom:20px;">Скачать DNS для игр</button>
-<div style="font-size:12px;color:#a29ecb;margin-bottom:10px;">Профили MDM</div>
-<button class="mdmBtn glass" data-variant="optim" style="width:100%;padding:13px;color:#d8d4ff;font-size:13px;margin-bottom:10px;text-align:left;display:flex;justify-content:space-between;align-items:center;"><span>Zaetheron OPTIM</span><i class="ti ti-download"></i></button>
+<div style="font-size:12px;color:#a29ecb;margin-bottom:10px;">Профиль MDM</div>
 <button class="mdmBtn glass" data-variant="basic" style="width:100%;padding:13px;color:#d8d4ff;font-size:13px;text-align:left;display:flex;justify-content:space-between;align-items:center;"><span>Zaetheron BASIC</span><i class="ti ti-download"></i></button>
 <div id="dlStatus" style="font-size:11px;color:#7fe0b8;margin-top:10px;height:14px;"></div>
 </div>
@@ -148,27 +147,144 @@ var cc=document.getElementById('constCanvas');cc.width=cw;cc.height=ch;
 var sc=document.getElementById('starCanvas');sc.width=cw;sc.height=ch;
 var cctx=cc.getContext('2d');
 var sctx=sc.getContext('2d');
-var dipper=[[cw*0.15,ch*0.15],[cw*0.25,ch*0.13],[cw*0.34,ch*0.145],[cw*0.42,ch*0.12],[cw*0.4,ch*0.18],[cw*0.47,ch*0.19],[cw*0.54,ch*0.17]];
-cctx.strokeStyle='rgba(190,185,255,0.35)';cctx.lineWidth=1;
-cctx.beginPath();dipper.forEach(function(p,i){if(i===0){cctx.moveTo(p[0],p[1]);}else{cctx.lineTo(p[0],p[1]);}});cctx.stroke();
-dipper.forEach(function(p){cctx.beginPath();cctx.arc(p[0],p[1],1.8,0,7);cctx.fillStyle='rgba(240,238,255,0.9)';cctx.fill();});
-for(var i=0;i<120;i++){var x=Math.random()*cw,y=Math.random()*ch,r=Math.random()*1.1+0.3;cctx.beginPath();cctx.arc(x,y,r,0,7);cctx.fillStyle='rgba(230,228,255,'+(0.2+Math.random()*0.5)+')';cctx.fill();}
-var stars=[];
-function spawnStar(){return {x:Math.random()*cw,y:-20-Math.random()*300,len:40+Math.random()*60,speed:3+Math.random()*3,angle:Math.PI/3.2};}
-for(var j=0;j<8;j++){var s=spawnStar();s.y=Math.random()*ch;stars.push(s);}
+
+/* ---------- фон: мерцающие звёзды + солнечная система ---------- */
+var bgStars=[];
+for(var i=0;i<150;i++){
+  bgStars.push({x:Math.random()*cw,y:Math.random()*ch,r:Math.random()*1.1+0.3,phase:Math.random()*Math.PI*2,speed:0.01+Math.random()*0.02});
+}
+
+var sun={cx:cw*0.80,cy:ch*0.13,r:20};
+var planets=[
+  {dist:38, size:2.8, speed:0.016, angle:Math.random()*6.28, color:'#5b6bd6', ring:false},
+  {dist:54, size:4.2, speed:0.011, angle:Math.random()*6.28, color:'#3a2f74', ring:false},
+  {dist:72, size:3.4, speed:0.0078,angle:Math.random()*6.28, color:'#6e4fc7', ring:true},
+  {dist:92, size:5.0, speed:0.0058,angle:Math.random()*6.28, color:'#2c3a86', ring:false},
+  {dist:114,size:2.4, speed:0.0042,angle:Math.random()*6.28, color:'#8a6fe0', ring:false}
+];
+
+function drawSolarSystem(){
+  cctx.strokeStyle='rgba(150,140,255,0.08)';
+  cctx.lineWidth=1;
+  planets.forEach(function(p){
+    cctx.beginPath();cctx.ellipse(sun.cx,sun.cy,p.dist,p.dist*0.55,0,0,7);cctx.stroke();
+  });
+  var glow=cctx.createRadialGradient(sun.cx,sun.cy,0,sun.cx,sun.cy,sun.r*4.5);
+  glow.addColorStop(0,'rgba(255,236,205,0.9)');
+  glow.addColorStop(0.15,'rgba(255,210,150,0.5)');
+  glow.addColorStop(0.4,'rgba(190,140,255,0.16)');
+  glow.addColorStop(1,'rgba(190,140,255,0)');
+  cctx.beginPath();cctx.arc(sun.cx,sun.cy,sun.r*4.5,0,7);cctx.fillStyle=glow;cctx.fill();
+  var core=cctx.createRadialGradient(sun.cx-sun.r*0.2,sun.cy-sun.r*0.2,0,sun.cx,sun.cy,sun.r);
+  core.addColorStop(0,'#fff8e8');core.addColorStop(0.5,'#ffe0a4');core.addColorStop(1,'#ffab6e');
+  cctx.beginPath();cctx.arc(sun.cx,sun.cy,sun.r,0,7);cctx.fillStyle=core;cctx.fill();
+
+  planets.forEach(function(p){
+    p.angle+=p.speed;
+    var px=sun.cx+Math.cos(p.angle)*p.dist;
+    var py=sun.cy+Math.sin(p.angle)*p.dist*0.55;
+    if(p.ring){
+      cctx.save();
+      cctx.translate(px,py);cctx.rotate(0.5);cctx.scale(1,0.32);
+      cctx.beginPath();cctx.arc(0,0,p.size*2.2,0,7);
+      cctx.strokeStyle='rgba(190,175,255,0.55)';cctx.lineWidth=1.3;cctx.stroke();
+      cctx.restore();
+    }
+    var pg=cctx.createRadialGradient(px-p.size*0.3,py-p.size*0.3,0,px,py,p.size);
+    pg.addColorStop(0,'#cdc6ff');pg.addColorStop(0.45,p.color);pg.addColorStop(1,'#0b0820');
+    cctx.beginPath();cctx.arc(px,py,p.size,0,7);cctx.fillStyle=pg;cctx.fill();
+  });
+}
+
+function renderStatic(){
+  cctx.clearRect(0,0,cw,ch);
+  bgStars.forEach(function(s){
+    s.phase+=s.speed;
+    var a=0.22+0.45*Math.abs(Math.sin(s.phase));
+    cctx.beginPath();cctx.arc(s.x,s.y,s.r,0,7);
+    cctx.fillStyle='rgba(225,222,255,'+a+')';
+    cctx.fill();
+  });
+  drawSolarSystem();
+}
+
+/* ---------- метеоры со взрывом + редкие далёкие фиолетовые фейерверки ---------- */
+var meteors=[];
+var bursts=[];
+var meteorTimer=90;
+var fireworkTimer=260;
+
+function spawnMeteor(){
+  var angle=Math.PI/3.3+Math.random()*0.35;
+  meteors.push({
+    x:Math.random()*cw*0.65,y:-20,
+    vx:Math.cos(angle)*(4+Math.random()*3),
+    vy:Math.sin(angle)*(4+Math.random()*3),
+    len:45+Math.random()*55,
+    travel:0,
+    exploded:false,
+    explodeAt:70+Math.random()*130
+  });
+}
+function explodeMeteor(m){
+  var count=12+Math.floor(Math.random()*10);
+  var particles=[];
+  for(var i=0;i<count;i++){
+    var a=Math.random()*Math.PI*2,sp=0.6+Math.random()*1.7;
+    particles.push({x:m.x,y:m.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,color:'rgba(232,227,255,'});
+  }
+  bursts.push({particles:particles,age:0,maxAge:34});
+}
+function spawnFirework(){
+  var x=cw*(0.08+Math.random()*0.84),y=ch*(0.06+Math.random()*0.32);
+  var count=8+Math.floor(Math.random()*5);
+  var hues=['rgba(186,110,255,','rgba(150,86,232,','rgba(210,150,255,'];
+  var particles=[];
+  for(var i=0;i<count;i++){
+    var a=Math.random()*Math.PI*2,sp=0.3+Math.random()*0.6;
+    particles.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,color:hues[i%hues.length]});
+  }
+  bursts.push({particles:particles,age:0,maxAge:55,small:true});
+}
+
+function renderTransient(){
+  sctx.clearRect(0,0,cw,ch);
+
+  meteorTimer--;
+  if(meteorTimer<=0 && meteors.length<2){spawnMeteor();meteorTimer=220+Math.random()*280;}
+  meteors.forEach(function(m){
+    if(m.exploded)return;
+    m.x+=m.vx;m.y+=m.vy;m.travel++;
+    var mag=Math.hypot(m.vx,m.vy);
+    var tx=m.x-(m.vx/mag)*m.len,ty=m.y-(m.vy/mag)*m.len;
+    var grad=sctx.createLinearGradient(m.x,m.y,tx,ty);
+    grad.addColorStop(0,'rgba(255,255,255,0.95)');grad.addColorStop(1,'rgba(255,255,255,0)');
+    sctx.strokeStyle=grad;sctx.lineWidth=1.5;
+    sctx.beginPath();sctx.moveTo(m.x,m.y);sctx.lineTo(tx,ty);sctx.stroke();
+    sctx.beginPath();sctx.arc(m.x,m.y,1.7,0,7);sctx.fillStyle='rgba(255,255,255,0.95)';sctx.fill();
+    if(m.travel>=m.explodeAt||m.x>cw+40||m.y>ch+40){m.exploded=true;explodeMeteor(m);}
+  });
+  meteors=meteors.filter(function(m){return !m.exploded;});
+
+  fireworkTimer--;
+  if(fireworkTimer<=0){spawnFirework();fireworkTimer=520+Math.random()*760;}
+
+  bursts.forEach(function(b){
+    b.age++;
+    var alpha=Math.max(0,1-b.age/b.maxAge);
+    b.particles.forEach(function(p){
+      p.x+=p.vx;p.y+=p.vy;p.vx*=0.96;p.vy*=0.96;
+      sctx.beginPath();sctx.arc(p.x,p.y,b.small?0.8:1.1,0,7);
+      sctx.fillStyle=p.color+alpha+')';sctx.fill();
+    });
+  });
+  bursts=bursts.filter(function(b){return b.age<b.maxAge;});
+}
+
 function animate(){
-sctx.clearRect(0,0,cw,ch);
-stars.forEach(function(st){
-st.x+=Math.cos(st.angle)*st.speed;st.y+=Math.sin(st.angle)*st.speed;
-var tx=st.x-Math.cos(st.angle)*st.len,ty=st.y-Math.sin(st.angle)*st.len;
-var grad=sctx.createLinearGradient(st.x,st.y,tx,ty);
-grad.addColorStop(0,'rgba(255,255,255,0.95)');grad.addColorStop(1,'rgba(255,255,255,0)');
-sctx.strokeStyle=grad;sctx.lineWidth=1.4;
-sctx.beginPath();sctx.moveTo(st.x,st.y);sctx.lineTo(tx,ty);sctx.stroke();
-sctx.beginPath();sctx.arc(st.x,st.y,1.6,0,7);sctx.fillStyle='rgba(255,255,255,0.95)';sctx.fill();
-if(st.y>ch+40||st.x>cw+40){var ns=spawnStar();st.x=ns.x;st.y=ns.y;st.len=ns.len;st.speed=ns.speed;}
-});
-requestAnimationFrame(animate);
+  renderStatic();
+  renderTransient();
+  requestAnimationFrame(animate);
 }
 animate();
 
@@ -291,7 +407,22 @@ var steps=[
 {icon:'ti-adjustments',title:'Снизьте графику в самой игре',text:'Ищите Graphics / Frame Rate / Performance Mode в настройках игры.'},
 {icon:'ti-device-gamepad',title:'Используйте MFi-контроллер',text:'Только сертифицированные MFi-контроллеры дают системный маппинг без задержек.'},
 {icon:'ti-battery-off',title:'Отключите режим энергосбережения',text:'Настройки → Батарея. Он снижает производительность процессора.'},
-{icon:'ti-alert-triangle',title:'Избегайте сторонних «бустеров»',text:'Системный Game Mode — единственный настоящий механизм ускорения.'}
+{icon:'ti-alert-triangle',title:'Избегайте сторонних «бустеров»',text:'Системный Game Mode — единственный настоящий механизм ускорения.'},
+{icon:'ti-wifi',title:'🔒 Отключите Wi-Fi Assist',text:'Настройки → Сотовая связь → внизу → Wi-Fi Assist. Без него телефон не «прыгает» на LTE при слабом Wi-Fi — меньше случайных скачков пинга.'},
+{icon:'ti-share',title:'Выключите AirDrop на время сессии',text:'Пункт управления → долгое нажатие блока связи → AirDrop → «Приём выключен». Освобождает радиомодуль от фонового сканирования.'},
+{icon:'ti-cloud-off',title:'Приостановите синхронизацию iCloud',text:'Настройки → [Имя] → iCloud → Фото/Диск → временно выключите. Меньше фоновой нагрузки на сеть и накопитель во время игры.'},
+{icon:'ti-eye-off',title:'Включите «Уменьшение движения»',text:'Настройки → Универсальный доступ → Движение → «Уменьшение движения». Разгружает композитор интерфейса — больше ресурсов GPU достаётся игре.'},
+{icon:'ti-droplet-off',title:'Включите «Уменьшение прозрачности»',text:'Настройки → Универсальный доступ → Экран и размер текста → «Уменьшение прозрачности». Меньше blur-эффектов — стабильнее кадры.'},
+{icon:'ti-plug-off',title:'Не заряжайте телефон во время долгих сессий',text:'Зарядка во время игры ускоряет нагрев и троттлинг чипа. Зарядите заранее до 80-90% и играйте автономно.'},
+{icon:'ti-antenna-bars-5',title:'🔒 При слабом 5G переключитесь на LTE',text:'Настройки → Сотовая связь → Параметры данных → Голос и данные → 4G/LTE. В зонах слабого 5G это часто даёт более стабильный пинг, чем постоянные переключения сетей.'},
+{icon:'ti-router',title:'Играйте на 5 ГГц/6 ГГц Wi-Fi',text:'В настройках роутера отдайте приоритет 5 ГГц/6 ГГц диапазону — меньше помех от соседей, чем на перегруженном 2.4 ГГц.'},
+{icon:'ti-access-point-off',title:'Отключите Personal Hotspot и лишний VPN',text:'Если точка доступа или VPN работают в фоне — это лишняя задержка и нагрузка на радиомодуль.'},
+{icon:'ti-bell-off',title:'🔒 Отключите Live Activities для лишних приложений',text:'Настройки → Уведомления → «Живые активности» — выключите для того, что не нужно во время игры. Освобождает такты Dynamic Island.'},
+{icon:'ti-map-pin-off',title:'Отключите ненужные службы геолокации',text:'Настройки → Конфиденциальность → Службы геолокации → Системные службы — выключите неиспользуемое. Меньше фоновой работы GPS-модуля.'},
+{icon:'ti-device-gamepad-2',title:'🔒 iOS 26: загляните в баннер Game Mode',text:'В Пункте управления баннер Game Mode показывает задержку в реальном времени и даёт быстрый доступ к микрофону, уведомлениям и Performance Mode.'},
+{icon:'ti-headphones',title:'AirPods Pro/Max вместо обычной Bluetooth-гарнитуры',text:'Чип H2 даёт заметно более низкую аудиозадержку, чем большинство сторонних Bluetooth-наушников — критично в шутерах.'},
+{icon:'ti-power',title:'Перезагружайте телефон перед долгой сессией',text:'Перезапуск сбрасывает накопившиеся фоновые утечки памяти — игра стартует на «чистой» системе.'},
+{icon:'ti-magnet',title:'🔒 Снимите аксессуары MagSafe с задней панели',text:'Магнитные кольца и подставки ухудшают отвод тепла в самых горячих точках корпуса при долгой нагрузке.'}
 ];
 var list=document.getElementById('stepList');
 steps.forEach(function(st,i){
