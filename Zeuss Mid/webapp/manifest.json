@@ -1,7 +1,7 @@
 {
   "name": "Zaetheron Industry",
   "short_name": "Zaetheron",
-  "start_url": "/app",
+  "start_url": "/optimize",
   "scope": "/",
   "display": "standalone",
   "background_color": "#060b1a",
